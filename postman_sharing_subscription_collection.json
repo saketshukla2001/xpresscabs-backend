@@ -1,0 +1,466 @@
+{
+  "info": {
+    "_postman_id": "9d0a8658-2b47-4a19-9e01-sharing-subscription",
+    "name": "Tempo - Sharing Rides & Subscriptions",
+    "description": "Postman collection for sharing ride APIs and subscription APIs. Set base_url and token in collection variables before use.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Sharing Rides",
+      "item": [
+        {
+          "name": "List Available Sharing Rides",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/sharing-rides",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sharing-rides"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My Sharing Rides",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/sharing-rides/mine",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sharing-rides",
+                "mine"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Sharing Ride",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle_type_id\": \"{{vehicle_type_id}}\",\n  \"price_per_km\": 15,\n  \"trip_start_time\": \"2026-07-20 10:30:00\",\n  \"total_capacity\": 4\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/sharing-rides/create",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sharing-rides",
+                "create"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Join Sharing Ride",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"seats\": 1,\n  \"payment_transaction_id\": \"txn_test_123\",\n  \"payment_status\": \"success\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/sharing-rides/{{sharing_ride_id}}/join",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sharing-rides",
+                "{{sharing_ride_id}}",
+                "join"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Sharing Booking OTP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"1234\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/sharing-rides/bookings/{{sharing_booking_id}}/verify-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sharing-rides",
+                "bookings",
+                "{{sharing_booking_id}}",
+                "verify-otp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Sharing Booking Payment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_transaction_id\": \"txn_test_456\",\n  \"payment_status\": \"success\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/sharing-rides/bookings/{{sharing_booking_id}}/payment",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sharing-rides",
+                "bookings",
+                "{{sharing_booking_id}}",
+                "payment"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Complete Sharing Ride",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/sharing-rides/{{sharing_ride_id}}/complete",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sharing-rides",
+                "{{sharing_ride_id}}",
+                "complete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Sharing Ride",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/sharing-rides/{{sharing_ride_id}}/cancel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sharing-rides",
+                "{{sharing_ride_id}}",
+                "cancel"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "List Subscription Plans",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subscriptions/plans",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subscriptions",
+                "plans"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My Active Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subscriptions/mine",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subscriptions",
+                "mine"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buy Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan_id\": \"{{subscription_plan_id}}\",\n  \"payment_transaction_id\": \"sub_txn_test_123\",\n  \"payment_status\": \"success\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/subscriptions/buy",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subscriptions",
+                "buy"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost/tempo"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "vehicle_type_id",
+      "value": ""
+    },
+    {
+      "key": "sharing_ride_id",
+      "value": ""
+    },
+    {
+      "key": "sharing_booking_id",
+      "value": ""
+    },
+    {
+      "key": "subscription_plan_id",
+      "value": ""
+    }
+  ]
+}

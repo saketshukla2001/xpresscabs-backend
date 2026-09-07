@@ -117,7 +117,7 @@ display: inline-block;
 </a>
 </div>
 <div class="col-sm-12">
-    <form  method="post" class="form-horizontal" action="{{url('zone/update',request()->id)}}" enctype="multipart/form-data">
+    <form  method="post" class="form-horizontal" action="{{url('zone/update',request()->id)}}" enctype="multipart/form-data" onsubmit="if(typeof syncCoordinatesInput==='function'){syncCoordinatesInput();}">
 {{csrf_field()}}
 <input type="hidden" id="info" name="coordinates" value="">
 

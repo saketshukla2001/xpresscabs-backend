@@ -400,6 +400,20 @@ if (!function_exists('find_zone')) {
 
         $zone = Zone::contains('coordinates', $point)->where('active', 1)->first();
 
+        if ($zone) {
+            return $zone;
+        }
+
+        // Invalid saved polygons (wrong winding / duplicate close) fail ST_Contains.
+        // ST_Buffer(..., 0) repairs the geometry so pickup still matches the zone.
+        try {
+            $zone = Zone::where('active', 1)
+                ->whereRaw('ST_Contains(ST_Buffer(coordinates, 0), ST_GeomFromText(?))', [$point->toWKT()])
+                ->first();
+        } catch (\Throwable $e) {
+            $zone = null;
+        }
+
         return $zone;
     }
 }

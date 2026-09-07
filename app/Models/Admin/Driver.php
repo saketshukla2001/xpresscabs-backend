@@ -95,7 +95,7 @@ class Driver extends Model
     }
     public function getTimezoneAttribute()
     {
-        return $this->user->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        return $this->user && $this->user->timezone ? $this->user->timezone : env('SYSTEM_DEFAULT_TIMEZONE');
     }
 
     public function getVehicleTypeNameAttribute()
@@ -129,11 +129,11 @@ class Driver extends Model
     }
     public function getRatingAttribute()
     {
-        return $this->user->rating;
+        return $this->user ? $this->user->rating : 0;
     }
     public function getNoOfRatingsAttribute()
     {
-        return $this->user->no_of_ratings;
+        return $this->user ? $this->user->no_of_ratings : 0;
     }
     public function requestDetail()
     {
@@ -284,8 +284,8 @@ class Driver extends Model
 
     public function rating($user_id)
     {
-        $rate=  User::where('id',$user_id)->first();
-        return $rate->rating;
+        $rate = User::where('id', $user_id)->first();
+        return $rate ? $rate->rating : 0;
     }
 
     public function enabledRoutes()

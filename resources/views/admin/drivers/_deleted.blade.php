@@ -61,6 +61,9 @@
 @php  $i= $results->firstItem(); @endphp
 
 @foreach($results as $key => $result)
+@if(!$result->driver)
+    @continue
+@endif
 
 <tr>
 <td>{{ $key+1 }} </td>

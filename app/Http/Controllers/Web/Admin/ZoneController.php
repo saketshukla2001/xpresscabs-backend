@@ -197,24 +197,7 @@ class ZoneController extends BaseController
         }
 
         foreach (json_decode($request->coordinates) as $key => $coordinates) {
-            $points = [];
-            $lineStrings = [];
-            foreach ($coordinates as $key => $coordinate) {
-                if ($key == 0) {
-                    $created_params['lat'] = $coordinate->lat;
-                    $created_params['lng'] = $coordinate->lng;
-                }
-                $point = new Point($coordinate->lat, $coordinate->lng);
-                $check_if_exists = $this->zone->companyKey()->contains('coordinates', $point)->exists();
-                if ($check_if_exists) {
-                    throw ValidationException::withMessages(['zone_name' => __('Coordinates already exists with our exists zone')]);
-                }
-                $points []= new Point($coordinate->lat, $coordinate->lng);
-            }
-            array_push($points, $points[0]);
-            $lineStrings[] = new LineString($points);
-            $polygon = new Polygon($lineStrings);
-
+            $polygon = $this->buildValidZonePolygon($coordinates, $created_params, true);
             $set[] = $polygon;
         }
 
@@ -257,24 +240,7 @@ class ZoneController extends BaseController
         }
 
         foreach (json_decode($request->coordinates) as $key => $coordinates) {
-            $points = [];
-            $lineStrings = [];
-            foreach ($coordinates as $key => $coordinate) {
-                if ($key == 0) {
-                    $updated_params['lat'] = $coordinate->lat;
-                    $updated_params['lng'] = $coordinate->lng;
-                }
-                $point = new Point($coordinate->lat, $coordinate->lng);
-                $check_if_exists = $this->zone->companyKey()->contains('coordinates', $point)->where('id', '!=', $zone->id)->exists();
-                if ($check_if_exists) {
-                    throw ValidationException::withMessages(['zone_name' => __('Coordinates already exists with our exists zone')]);
-                }
-                $points []= new Point($coordinate->lat, $coordinate->lng);
-            }
-            array_push($points, $points[0]);
-            $lineStrings[] = new LineString($points);
-            $polygon = new Polygon($lineStrings);
-
+            $polygon = $this->buildValidZonePolygon($coordinates, $updated_params, true, $zone->id);
             $set[] = $polygon;
         }
 
@@ -933,5 +899,75 @@ class ZoneController extends BaseController
 
     }
 
+    /**
+     * Build a MySQL-valid polygon: unique vertices, closed once, counter-clockwise.
+     */
+    private function buildValidZonePolygon($coordinates, &$params, $checkOverlap = true, $ignoreZoneId = null)
+    {
+        $points = [];
+
+        foreach ($coordinates as $key => $coordinate) {
+            $lat = is_object($coordinate) ? $coordinate->lat : $coordinate['lat'];
+            $lng = is_object($coordinate) ? $coordinate->lng : $coordinate['lng'];
+
+            if ($key == 0) {
+                $params['lat'] = $lat;
+                $params['lng'] = $lng;
+            }
+
+            $point = new Point($lat, $lng);
+
+            if ($checkOverlap) {
+                $overlapQuery = $this->zone->companyKey()->contains('coordinates', $point);
+                if ($ignoreZoneId) {
+                    $overlapQuery->where('id', '!=', $ignoreZoneId);
+                }
+                if ($overlapQuery->exists()) {
+                    throw ValidationException::withMessages(['zone_name' => __('Coordinates already exists with our exists zone')]);
+                }
+            }
+
+            if (!empty($points)) {
+                $prev = $points[count($points) - 1];
+                if (abs($prev->getLat() - $point->getLat()) < 0.0000001 && abs($prev->getLng() - $point->getLng()) < 0.0000001) {
+                    continue;
+                }
+            }
+
+            $points[] = $point;
+        }
+
+        if (count($points) >= 2) {
+            $first = $points[0];
+            $last = $points[count($points) - 1];
+            if (abs($first->getLat() - $last->getLat()) < 0.0000001 && abs($first->getLng() - $last->getLng()) < 0.0000001) {
+                array_pop($points);
+            }
+        }
+
+        if (count($points) < 3) {
+            throw ValidationException::withMessages(['zone_name' => __('Please Complete the shape before submit')]);
+        }
+
+        if ($this->zonePolygonArea($points) < 0) {
+            $points = array_reverse($points);
+        }
+
+        $points[] = $points[0];
+
+        return new Polygon([new LineString($points)]);
+    }
+
+    private function zonePolygonArea($points)
+    {
+        $area = 0;
+        $count = count($points);
+        for ($i = 0; $i < $count; $i++) {
+            $j = ($i + 1) % $count;
+            $area += ($points[$i]->getLng() * $points[$j]->getLat());
+            $area -= ($points[$j]->getLng() * $points[$i]->getLat());
+        }
+        return $area / 2;
+    }
 
 }

@@ -131,6 +131,9 @@ class DriverController extends BaseController
                 $query = $this->driver->where('approve', true)->where('owner_id', null)->where('service_location_id', auth()->user()->admin->service_location_id)->orderBy('created_at', 'desc');
                 // $query = Driver::orderBy('created_at', 'desc');
             }
+            $query = $query->whereDoesntHave('user', function ($userQuery) {
+                $userQuery->whereNotNull('is_deleted_at');
+            });
             $results = $queryFilter->builder($query)->customFilter(new DriverFilter)->paginate();
 
             return view('admin.drivers._drivers', compact('results','app_for'))->render();
@@ -162,6 +165,9 @@ class DriverController extends BaseController
                 $query = $this->driver->where('approve', false)->where('owner_id', null)->where('service_location_id', auth()->user()->admin->service_location_id)->orderBy('created_at', 'desc');
                 // $query = Driver::orderBy('created_at', 'desc');
             }
+            $query = $query->whereDoesntHave('user', function ($userQuery) {
+                $userQuery->whereNotNull('is_deleted_at');
+            });
             $results = $queryFilter->builder($query)->customFilter(new DriverFilter)->paginate();
 
             return view('admin.drivers._drivers', compact('results','app_for'))->render();
@@ -480,9 +486,17 @@ class DriverController extends BaseController
         return view('admin.drivers.deleted', compact('page', 'main_menu', 'sub_menu'));
     }
 // revertById
-    public function revertById(Driver $driver)
+    public function revertById($driver)
     {
-        $driver->user->update(['is_deleted_at'=>null]);
+        $driver = Driver::withTrashed()->findOrFail($driver);
+
+        if ($driver->trashed()) {
+            $driver->restore();
+        }
+
+        if ($driver->user) {
+            $driver->user->update(['is_deleted_at'=>null]);
+        }
 
         $message = trans('succes_messages.driver_reverted_succesfully');
 
@@ -493,7 +507,13 @@ class DriverController extends BaseController
     {
         $app_for = config('app.app_for');
 
-        $query = User::whereNotNull('is_deleted_at')->belongsToRole(RoleSlug::DRIVER);
+        $query = User::whereNotNull('is_deleted_at')->belongsToRole(RoleSlug::DRIVER)
+            ->whereHas('driver', function ($driverQuery) {
+                $driverQuery->withTrashed();
+            })
+            ->with(['driver' => function ($driverQuery) {
+                $driverQuery->withTrashed();
+            }]);
         $results = $queryFilter->builder($query)->customFilter(new CommonMasterFilter)->paginate();
 
        return view('admin.drivers._deleted', compact('results','app_for'))->render();
@@ -508,35 +528,88 @@ class DriverController extends BaseController
 
         }
 
+        $user = $driver->user;
+
+        if ($user && $user->is_deleted_at) {
+            $this->permanentlyDeleteDriver($driver, $user);
+
+            $message = trans('succes_messages.driver_deleted_succesfully');
+
+            return $message;
+        }
+
+        if (!$user) {
+            $user = $this->createUserForDriver($driver);
+        }
+
+        try {
+            $this->database->getReference('drivers/driver_'.$driver->id)->remove();
+        } catch (\Throwable $e) {
+            // Firebase node may not exist for unapproved/incomplete drivers
+        }
+
+        $user->update(['is_deleted_at' => now()]);
+
+        $message = trans('succes_messages.driver_deleted_succesfully');
+
+        return $message;
+    }
+
+    private function createUserForDriver(Driver $driver)
+    {
+        $user = $this->user->create([
+            'name' => $driver->name,
+            'email' => $driver->email,
+            'password' => bcrypt(str_random(12)),
+            'mobile' => $driver->mobile ?: '0000000000',
+            'gender' => $driver->gender,
+            'country' => $driver->country,
+            'timezone' => env('SYSTEM_DEFAULT_TIMEZONE', 'Asia/Kolkata'),
+            'active' => 1,
+            'mobile_confirmed' => true,
+            'refferal_code' => str_random(6),
+        ]);
+
+        $user->attachRole(RoleSlug::DRIVER);
+
+        $driver->user_id = $user->id;
+        $driver->save();
+
+        return $user;
+    }
+
+    private function permanentlyDeleteDriver(Driver $driver, User $user)
+    {
         try {
             DB::beginTransaction();
 
-            // Delete related chat messages
-            ChatMessage::whereIn('chat_id', function($query) use ($driver) {
+            ChatMessage::whereIn('chat_id', function($query) use ($user) {
                 $query->select('id')
-                      ->from('chats')
-                      ->where('user_id', $driver->user->id);
+                      ->from('chat')
+                      ->where('user_id', $user->id);
             })->delete();
 
-            // Delete the chats
-            Chat::where('user_id', $driver->user->id)->delete();
+            Chat::where('user_id', $user->id)->delete();
 
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            // Handle the exception or log the error
             throw $e;
         }
-        // $chat_exists = Chat::join("chat_messages", "chat.id", "chat_messages.chat_id")->where('user_id', $driver->user->id)->delete();
 
-        
-        $this->database->getReference('drivers/driver_'.$driver->id)->remove();
-        
-        $driver->user()->delete();
+        try {
+            $this->database->getReference('drivers/driver_'.$driver->id)->remove();
+        } catch (\Throwable $e) {
+            // Firebase node may not exist for unapproved/incomplete drivers
+        }
 
-        $message = trans('succes_messages.driver_deleted_succesfully');
+        $user->delete();
 
-        return redirect('drivers')->with('success', $message);
+        if ($driver->trashed()) {
+            $driver->forceDelete();
+        } else {
+            $driver->delete();
+        }
     }
     public function getCarMake()
     {

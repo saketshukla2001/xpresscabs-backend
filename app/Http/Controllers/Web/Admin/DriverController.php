@@ -131,7 +131,7 @@ class DriverController extends BaseController
                 $query = $this->driver->where('approve', true)->where('owner_id', null)->where('service_location_id', auth()->user()->admin->service_location_id)->orderBy('created_at', 'desc');
                 // $query = Driver::orderBy('created_at', 'desc');
             }
-            $query = $query->whereDoesntHave('user', function ($userQuery) {
+            $query = $query->with(['user', 'serviceLocation'])->whereDoesntHave('user', function ($userQuery) {
                 $userQuery->whereNotNull('is_deleted_at');
             });
             $results = $queryFilter->builder($query)->customFilter(new DriverFilter)->paginate();
@@ -165,7 +165,7 @@ class DriverController extends BaseController
                 $query = $this->driver->where('approve', false)->where('owner_id', null)->where('service_location_id', auth()->user()->admin->service_location_id)->orderBy('created_at', 'desc');
                 // $query = Driver::orderBy('created_at', 'desc');
             }
-            $query = $query->whereDoesntHave('user', function ($userQuery) {
+            $query = $query->with(['user', 'serviceLocation'])->whereDoesntHave('user', function ($userQuery) {
                 $userQuery->whereNotNull('is_deleted_at');
             });
             $results = $queryFilter->builder($query)->customFilter(new DriverFilter)->paginate();
@@ -214,9 +214,9 @@ class DriverController extends BaseController
         }
 
 
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->exists();
 
-        $validate_exists_mobile = $this->user->belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::DRIVER, true);
 
         if ($validate_exists_email) {
             return redirect()->back()->withErrors(['email'=>'Provided email hs already been taken'])->withInput();
@@ -252,6 +252,10 @@ class DriverController extends BaseController
 
         $created_params['active'] = false;
         $created_params['country'] = $country->id;
+
+        if (driver_exists_for_user($user->id)) {
+            return redirect()->back()->withErrors(['mobile'=>'A driver already exists for this user'])->withInput();
+        }
 
         $driver = $user->driver()->create($created_params);
 
@@ -307,9 +311,9 @@ class DriverController extends BaseController
         }
         
         $user = $driver->user;
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->where('id', '!=', $user->id)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->where('id', '!=', $user->id)->exists();
 
-        $validate_exists_mobile = $this->user->belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->where('id', '!=', $user->id)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::DRIVER, true, $user->id);
 
         if ($validate_exists_email) {
             return redirect()->back()->withErrors(['email'=>'Provided email hs already been taken'])->withInput();
@@ -490,6 +494,19 @@ class DriverController extends BaseController
     {
         $driver = Driver::withTrashed()->findOrFail($driver);
 
+        if ($driver->user) {
+            $mobileTaken = get_or_check_if_exists_user($driver->user->mobile, Role::DRIVER, true, $driver->user->id);
+            $emailTaken = $this->user->belongsTorole(Role::DRIVER)
+                ->whereNull('is_deleted_at')
+                ->where('email', $driver->user->email)
+                ->where('id', '!=', $driver->user->id)
+                ->exists();
+
+            if ($mobileTaken || $emailTaken) {
+                return redirect('drivers/deleted_drivers')->with('warning', 'Cannot revert this driver because the mobile or email is already used by another driver.');
+            }
+        }
+
         if ($driver->trashed()) {
             $driver->restore();
         }
@@ -553,6 +570,72 @@ class DriverController extends BaseController
         $message = trans('succes_messages.driver_deleted_succesfully');
 
         return $message;
+    }
+
+    public function removeExtraUser(Driver $driver)
+    {
+        if (env('APP_FOR') == 'demo') {
+            return 'you cannot delete the extra user. this is demo version';
+        }
+
+        $user = $driver->user;
+
+        if (!$user || !$driver->hasExtraUserDetail()) {
+            return 'No extra user detail found';
+        }
+
+        $mobileTaken = User::whereNull('is_deleted_at')
+            ->where('mobile', $driver->mobile)
+            ->where('id', '!=', $user->id)
+            ->first();
+
+        if ($mobileTaken) {
+            if (!driver_exists_for_user($mobileTaken->id, $driver->id)) {
+                $driver->user_id = $mobileTaken->id;
+                $driver->save();
+
+                if (!$mobileTaken->hasRole(RoleSlug::DRIVER)) {
+                    $mobileTaken->attachRole(RoleSlug::DRIVER);
+                }
+
+                $this->releaseLeftoverDriverUser($user);
+
+                cache()->tags('drivers_list')->flush();
+
+                return 'Extra user detail removed successfully';
+            }
+
+            return 'Cannot remove extra user because driver mobile is already used by another account';
+        }
+
+        $email = $driver->email ?: $user->email;
+        $emailTaken = $email && User::whereNull('is_deleted_at')
+            ->where('email', $email)
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        $user->update([
+            'name' => $driver->name,
+            'mobile' => $driver->mobile,
+            'email' => $emailTaken ? $user->email : $email,
+        ]);
+
+        cache()->tags('drivers_list')->flush();
+
+        return 'Extra user detail removed successfully';
+    }
+
+    private function releaseLeftoverDriverUser(User $user)
+    {
+        if ($user->hasRole(RoleSlug::DRIVER)) {
+            $user->detachRole(RoleSlug::DRIVER);
+        }
+
+        $user->update([
+            'is_deleted_at' => now(),
+            'mobile' => 'd'.$user->id,
+            'email' => 'deleted+'.$user->id.'@released.local',
+        ]);
     }
 
     private function createUserForDriver(Driver $driver)

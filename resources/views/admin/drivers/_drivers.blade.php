@@ -73,7 +73,12 @@
 
 <tr>
 <td>{{ $key+1 }} </td>
-<td>{{$result->name}}</td>
+<td>
+    {{ optional($result->user)->name ?? $result->name }}
+    @if($result->user && $result->user->name !== $result->name)
+        <br><small class="text-muted">{{ $result->name }}</small>
+    @endif
+</td>
 @if($result->serviceLocation)
 <td>{{$result->serviceLocation->name}}</td>
 @else
@@ -82,12 +87,22 @@
 @if(env('APP_FOR')=='demo')
     <td>**********</td>
     @else
-    <td>{{$result->email}}</td>
+    <td>
+        {{ optional($result->user)->email ?? $result->email }}
+        @if($result->user && $result->user->email && $result->email && $result->user->email !== $result->email)
+            <br><small class="text-muted">{{ $result->email }}</small>
+        @endif
+    </td>
 @endif
 @if(env('APP_FOR')=='demo')
     <td>**********</td>
     @else
-    <td>{{$result->mobile}}</td>
+    <td>
+        {{ optional($result->user)->mobile ?? $result->mobile }}
+        @if($result->user && $result->user->mobile !== $result->mobile)
+            <br><small class="text-muted">{{ $result->mobile }}</small>
+        @endif
+    </td>
 @endif
 @if($app_for == "super" || $app_for == "bidding")
     <td>{{$result->transport_type}}</td>
@@ -136,6 +151,12 @@
             @endforeach 
 
 <td>
+
+@if($result->hasExtraUserDetail() && auth()->user()->can('delete-drivers'))
+<button type="button" class="btn btn-danger btn-sm sweet-delete" data-url="{{ url('drivers/remove-extra-user', $result->id) }}">
+    Delete extra user
+</button>
+@endif
 
 <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">@lang('view_pages.action')
 </button>

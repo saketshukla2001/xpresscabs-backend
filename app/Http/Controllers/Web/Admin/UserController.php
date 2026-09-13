@@ -141,9 +141,9 @@ class UserController extends BaseController
         $created_params['mobile_confirmed'] = true;
         $created_params['password'] = bcrypt($request->input('password'));
 
-        $validate_exists_email = $this->user->belongsTorole(Role::USER)->where('email', $request->email)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::USER)->whereNull('is_deleted_at')->where('email', $request->email)->exists();
 
-        $validate_exists_mobile = $this->user->belongsTorole(Role::USER)->where('mobile', $request->mobile)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::USER, true);
 
         if ($validate_exists_email) {
             return redirect()->back()->withErrors(['email'=>'Provided email hs already been taken'])->withInput();
@@ -195,9 +195,9 @@ class UserController extends BaseController
                 ->saveProfilePicture();
         }
 
-        $validate_exists_email = $this->user->belongsTorole(Role::USER)->where('email', $request->email)->where('id', '!=', $user->id)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::USER)->whereNull('is_deleted_at')->where('email', $request->email)->where('id', '!=', $user->id)->exists();
 
-        $validate_exists_mobile = $this->user->belongsTorole(Role::USER)->where('mobile', $request->mobile)->where('id', '!=', $user->id)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::USER, true, $user->id);
 
         if ($validate_exists_email) {
             return redirect()->back()->withErrors(['email'=>'Provided email hs already been taken'])->withInput();

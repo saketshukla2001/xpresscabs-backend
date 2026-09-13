@@ -204,9 +204,9 @@ class FleetDriverController extends BaseController
         $service_location = ServiceLocation::where('id',$request->service_location_id)->first();
 
 
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->exists();
 
-        $validate_exists_mobile = $this->user->belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::DRIVER, true);
 
         if ($validate_exists_email) {
             return redirect()->back()->withErrors(['email'=>'Provided email has already been taken'])->withInput();
@@ -239,6 +239,10 @@ class FleetDriverController extends BaseController
 
         $created_params['active'] = false;
         $created_params['country'] = $service_location->country;
+
+        if (driver_exists_for_user($user->id)) {
+            return redirect()->back()->withErrors(['mobile'=>'A driver already exists for this user'])->withInput();
+        }
 
         $driver = $user->driver()->create($created_params);
 
@@ -281,9 +285,9 @@ class FleetDriverController extends BaseController
         $updatedParams = $request->only(['service_location_id', 'name','mobile','email','gender', 'owner_id','transport_type']);
 
         $user = $driver->user;
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->where('id', '!=', $user->id)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->where('id', '!=', $user->id)->exists();
 
-        $validate_exists_mobile = $this->user->belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->where('id', '!=', $user->id)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::DRIVER, true, $user->id);
 
         if ($validate_exists_email) {
             return redirect()->back()->withErrors(['email'=>'Provided email hs already been taken'])->withInput();

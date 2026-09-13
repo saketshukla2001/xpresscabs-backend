@@ -19,6 +19,7 @@ use App\Models\Payment\WalletWithdrawalRequest;
 use App\Models\Payment\DriverSubscription;
 use App\Models\Request\DriverRejectedRequest;
 use Grimzy\LaravelMysqlSpatial\Eloquent\SpatialTrait;
+use Illuminate\Validation\ValidationException;
 use Config;
 
 class Driver extends Model
@@ -30,6 +31,30 @@ class Driver extends Model
      * @var string
      */
     protected $table = 'drivers';
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function (Driver $driver) {
+            if (!$driver->user_id) {
+                return;
+            }
+
+            $taken = static::withTrashed()
+                ->where('user_id', $driver->user_id)
+                ->when($driver->getKey(), function ($query) use ($driver) {
+                    $query->where($driver->getKeyName(), '!=', $driver->getKey());
+                })
+                ->exists();
+
+            if ($taken) {
+                throw ValidationException::withMessages([
+                    'user_id' => 'A driver already exists for this user.',
+                ]);
+            }
+        });
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -79,8 +104,13 @@ class Driver extends Model
             'drivers.name' => 20,
             'drivers.email' => 20,
             'drivers.mobile' => 20,
+            'users.name' => 20,
+            'users.email' => 20,
+            'users.mobile' => 20,
         ],
-
+        'joins' => [
+            'users' => ['drivers.user_id', 'users.id'],
+        ],
     ];
 
     /**
@@ -171,6 +201,17 @@ class Driver extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    public function hasExtraUserDetail()
+    {
+        if (!$this->user) {
+            return false;
+        }
+
+        return trim((string) $this->user->name) !== trim((string) $this->name)
+            || trim((string) $this->user->mobile) !== trim((string) $this->mobile)
+            || (trim((string) $this->user->email) !== '' && trim((string) $this->email) !== '' && trim((string) $this->user->email) !== trim((string) $this->email));
     } 
     public function serviceLocation()
     {

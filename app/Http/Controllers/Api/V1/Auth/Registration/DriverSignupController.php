@@ -86,6 +86,14 @@ class DriverSignupController extends LoginController
             $created_params = $request->only(['service_location_id', 'name','mobile','email','address','state','city','country','gender','vehicle_type','car_make','car_model','car_color','car_number','vehicle_year','custom_make','custom_model']);
         $mobile = $request->mobile;
 
+        if (get_or_check_if_exists_user($mobile, Role::DRIVER, true)) {
+            $this->throwCustomException('Provided mobile has already been taken');
+        }
+
+        if ($request->filled('email') && $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->exists()) {
+            $this->throwCustomException('Provided email has already been taken');
+        }
+
         $created_params['postal_code'] = $request->postal_code;
 
         $created_params['postal_code'] = $request->postal_code;
@@ -158,6 +166,10 @@ class DriverSignupController extends LoginController
         {
         $created_params['transport_type'] = $request->transport_type;
             
+        }
+
+        if (driver_exists_for_user($user->id)) {
+            $this->throwCustomException('A driver already exists for this user');
         }
 
         $driver = $user->driver()->create($created_params); //Create drivers table data
@@ -250,15 +262,15 @@ class DriverSignupController extends LoginController
 
         if($request->has('email')){
 
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->exists();
 
         if($request->has('role')&& $request->role=='driver'){
 
-            $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->exists();
+            $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->exists();
         }
         if($request->has('role')&& $request->role=='owner'){
 
-            $validate_exists_email = $this->user->belongsTorole(Role::OWNER)->where('email', $request->email)->exists();
+            $validate_exists_email = $this->user->belongsTorole(Role::OWNER)->whereNull('is_deleted_at')->where('email', $request->email)->exists();
         }
 
         if ($validate_exists_email) {
@@ -350,16 +362,16 @@ if ($request->has('mobile') && $request->has('email')) {
 
         $email = $request->email;
 
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $email)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $email)->exists();
 
         if($request->has('role') && $request->role=='driver'){
 
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $email)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $email)->exists();
 
         }
         if($request->has('role') && $request->role=='owner'){
 
-            $validate_exists_email = $this->user->belongsTorole(Role::OWNER)->where('email', $email)->exists();
+            $validate_exists_email = $this->user->belongsTorole(Role::OWNER)->whereNull('is_deleted_at')->where('email', $email)->exists();
         }
 
         if ($validate_exists_email) {

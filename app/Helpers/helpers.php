@@ -1618,43 +1618,47 @@ function getDistanceMatrixByOpenstreetMap($pick_lat,$pick_lng,$drop_lat,$drop_ln
 
 if (!function_exists('get_or_check_if_exists_user')) {
 
-function get_or_check_if_exists_user($mobile,$role,$check_exists=false)
+function get_or_check_if_exists_user($mobile,$role,$check_exists=false, $exceptUserId=null)
 {
+        $digits = preg_replace('/\D+/', '', (string) $mobile);
+        $mobiles = array_unique(array_filter([
+            $mobile,
+            $digits,
+            ltrim($digits, '0'),
+            ($digits !== '' && strpos($digits, '0') !== 0) ? '0'.$digits : null,
+            $digits !== '' ? '+'.$digits : null,
+        ]));
 
-        $mobile_with_zero = $mobile;
-        $mobile_without_zero = $mobile;
+        $query = User::whereNull('is_deleted_at')
+            ->belongsToRole($role)
+            ->where(function ($q) use ($mobiles) {
+                $q->whereIn('mobile', $mobiles);
+            });
 
-        if (substr($mobile, 0, 1) === '0') {
-
-        $mobile_with_zero = $mobile;
-
-        $mobile_without_zero = ltrim($mobile, '0');
-
-        } else {
-
-        $mobile_with_zero = '0'.$mobile;
-
-        $mobile_without_zero = $mobile;
-
+        if ($exceptUserId) {
+            $query->where('id', '!=', $exceptUserId);
         }
 
         if($check_exists){
-
-            return  $user = User::where('mobile', $mobile_with_zero)
-        ->orWhere('mobile', $mobile_without_zero)->belongsTorole($role)
-        ->exists();
-            
-        }else{
-
-            return $user = User::where('mobile', $mobile_with_zero)
-        ->orWhere('mobile', $mobile_without_zero)->belongsTorole($role)
-        ->first();
-
+            return $query->exists();
         }
-       
 
+        return $query->first();
     }
 
+}
+
+if (!function_exists('driver_exists_for_user')) {
+    function driver_exists_for_user($userId, $exceptDriverId = null)
+    {
+        $query = \App\Models\Admin\Driver::withTrashed()->where('user_id', $userId);
+
+        if ($exceptDriverId) {
+            $query->where('id', '!=', $exceptDriverId);
+        }
+
+        return $query->exists();
+    }
 }
 
 if(!function_exists('decode_polyline')) 

@@ -150,9 +150,9 @@ class DriverController extends BaseController
         $created_params['postal_code'] = $request->postal_code;
         $created_params['uuid'] = driver_uuid();
 
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->exists();
 
-        $validate_exists_mobile = $this->user->belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::DRIVER, true);
 
         if ($validate_exists_email) {
             return redirect()->back()->withErrors(['email'=>'Provided email has already been taken'])->withInput();
@@ -185,6 +185,11 @@ class DriverController extends BaseController
             }
     
             $user->attachRole(RoleSlug::DRIVER);
+
+            if (driver_exists_for_user($user->id)) {
+                DB::rollBack();
+                return redirect()->back()->withErrors(['mobile'=>'A driver already exists for this user'])->withInput();
+            }
     
             $driver = $user->driver()->create($created_params);
     
@@ -227,9 +232,9 @@ class DriverController extends BaseController
     {
         $updatedParams = $request->only(['name','mobile','email','address','state','city','country','gender','car_color','car_number','postal_code']);
 
-        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->where('id', '!=', $driver->user_id)->exists();
+        $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->where('id', '!=', $driver->user_id)->exists();
 
-        $validate_exists_mobile = $this->user->belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->where('id', '!=', $driver->user_id)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::DRIVER, true, $driver->user_id);
 
         if ($validate_exists_email) {
             return redirect()->back()->withErrors(['email'=>'Provided email hs already been taken'])->withInput();

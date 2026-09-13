@@ -102,7 +102,7 @@
                     </div>
 
                     <div id="js-drivers-partial-target">
-                        <include-fragment src="fetch/deleted-drivers">
+                        <include-fragment src="/drivers/fetch/deleted-drivers">
                             <span style="text-align: center;font-weight: bold;"> @lang('view_pages.loading')</span>
                         </include-fragment>
                     </div>
@@ -132,7 +132,7 @@
                     e.preventDefault();
                     search_keyword = $('#search_keyword').val();
 
-                    fetch('drivers/fetch/deleted-drivers?search=' + search_keyword)
+                    fetch('/drivers/fetch/deleted-drivers?search=' + search_keyword)
                         .then(response => response.text())
                         .then(html => {
                             document.querySelector('#js-drivers-partial-target').innerHTML = html
@@ -163,7 +163,7 @@
                         }
                     });
 
-                    fetch('drivers/fetch/deleted-drivers?' + query)
+                    fetch('/drivers/fetch/deleted-drivers?' + query)
                         .then(response => response.text())
                         .then(html => {
                             document.querySelector('#js-drivers-partial-target').innerHTML = html
@@ -194,7 +194,7 @@
                             cache: false,
                             success: function(res) {
 
-                                fetch('drivers/fetch/deleted-drivers?search=' + search_keyword + '&' + query)
+                                fetch('/drivers/fetch/deleted-drivers?search=' + search_keyword + '&' + query)
                                     .then(response => response.text())
                                     .then(html => {
                                         document.querySelector('#js-drivers-partial-target')

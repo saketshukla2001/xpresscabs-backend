@@ -78,8 +78,8 @@ class FleetDriversController extends BaseController
 
         $owner_detail = auth()->user()->owner;
 
-        $validate_exists_mobile = User::belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->exists();
-        $validate_exists_email = User::belongsTorole(Role::DRIVER)->where('email', $request->email)->exists();
+        $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::DRIVER, true);
+        $validate_exists_email = User::belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->exists();
 
         if ($validate_exists_mobile) {
             $this->throwCustomException('Provided mobile has already been taken');
@@ -122,6 +122,11 @@ class FleetDriversController extends BaseController
         $created_params['transport_type'] = $request->transport_type;
             
 
+        }
+
+        if (driver_exists_for_user($user->id)) {
+            DB::rollBack();
+            $this->throwCustomException('A driver already exists for this user');
         }
 
         $driver = $user->driver()->create($created_params);

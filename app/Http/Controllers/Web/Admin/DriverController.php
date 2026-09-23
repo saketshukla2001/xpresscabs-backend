@@ -136,7 +136,13 @@ class DriverController extends BaseController
             });
             $results = $queryFilter->builder($query)->customFilter(new DriverFilter)->paginate();
 
-            return view('admin.drivers._drivers', compact('results','app_for'))->render();
+            $orphanUsers = collect();
+            $area = request('area', 'all');
+            if ((int) request('page', 1) === 1 && ($area === 'all' || $area === null || $area === '') && !request()->filled('available')) {
+                $orphanUsers = orphan_driver_users(request('search'));
+            }
+
+            return view('admin.drivers._drivers', compact('results','app_for','orphanUsers'))->render();
 
     }
     public function approvalPending()
@@ -312,6 +318,8 @@ class DriverController extends BaseController
         
         $user = $driver->user;
         $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->whereNull('is_deleted_at')->where('email', $request->email)->where('id', '!=', $user->id)->exists();
+
+        release_orphan_driver_users_for_mobile($request->mobile, $user->id);
 
         $validate_exists_mobile = get_or_check_if_exists_user($request->mobile, Role::DRIVER, true, $user->id);
 
@@ -570,6 +578,23 @@ class DriverController extends BaseController
         $message = trans('succes_messages.driver_deleted_succesfully');
 
         return $message;
+    }
+
+    public function deleteOrphanUser(User $user)
+    {
+        if (env('APP_FOR') == 'demo') {
+            return 'you cannot delete the driver. this is demo version';
+        }
+
+        if (driver_exists_for_user($user->id)) {
+            return 'This account already has a driver profile';
+        }
+
+        release_orphan_driver_users_for_mobile($user->mobile);
+
+        cache()->tags('drivers_list')->flush();
+
+        return 'Hidden driver account removed';
     }
 
     public function removeExtraUser(Driver $driver)

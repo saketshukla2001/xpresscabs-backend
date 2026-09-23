@@ -292,6 +292,7 @@ Route::middleware('auth:web')->group(function () {
         Route::get('toggle_available/{driver}', 'DriverController@toggleAvailable');
         Route::get('delete/{driver}', 'DriverController@delete');
         Route::get('remove-extra-user/{driver}', 'DriverController@removeExtraUser');
+        Route::get('delete-orphan-user/{user}', 'DriverController@deleteOrphanUser');
         Route::get('document/view/{driver}', 'DriverDocumentController@index');
         Route::get('upload/document/{driver}/{needed_document}', 'DriverDocumentController@documentUploadView');
         Route::post('upload/document/{driver}/{needed_document}', 'DriverDocumentController@uploadDocument');

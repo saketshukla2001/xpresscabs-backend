@@ -1616,18 +1616,26 @@ function getDistanceMatrixByOpenstreetMap($pick_lat,$pick_lng,$drop_lat,$drop_ln
         }
     }
 
-if (!function_exists('get_or_check_if_exists_user')) {
-
-function get_or_check_if_exists_user($mobile,$role,$check_exists=false, $exceptUserId=null)
-{
+if (!function_exists('mobile_lookup_variants')) {
+    function mobile_lookup_variants($mobile)
+    {
         $digits = preg_replace('/\D+/', '', (string) $mobile);
-        $mobiles = array_unique(array_filter([
+
+        return array_values(array_unique(array_filter([
             $mobile,
             $digits,
             ltrim($digits, '0'),
             ($digits !== '' && strpos($digits, '0') !== 0) ? '0'.$digits : null,
             $digits !== '' ? '+'.$digits : null,
-        ]));
+        ])));
+    }
+}
+
+if (!function_exists('get_or_check_if_exists_user')) {
+
+function get_or_check_if_exists_user($mobile,$role,$check_exists=false, $exceptUserId=null)
+{
+        $mobiles = mobile_lookup_variants($mobile);
 
         $query = User::whereNull('is_deleted_at')
             ->belongsToRole($role)
@@ -1646,6 +1654,67 @@ function get_or_check_if_exists_user($mobile,$role,$check_exists=false, $exceptU
         return $query->first();
     }
 
+}
+
+if (!function_exists('release_orphan_driver_users_for_mobile')) {
+    /**
+     * Free a mobile held only by a driver-role login that has no driver profile.
+     * A real driver account with that number is left untouched.
+     */
+    function release_orphan_driver_users_for_mobile($mobile, $exceptUserId = null)
+    {
+        $mobiles = mobile_lookup_variants($mobile);
+
+        $users = User::whereNull('is_deleted_at')
+            ->belongsToRole(RoleSlug::DRIVER)
+            ->whereIn('mobile', $mobiles)
+            ->when($exceptUserId, function ($query) use ($exceptUserId) {
+                $query->where('id', '!=', $exceptUserId);
+            })
+            ->get();
+
+        foreach ($users as $user) {
+            if (driver_exists_for_user($user->id)) {
+                continue;
+            }
+
+            if ($user->hasRole(RoleSlug::DRIVER)) {
+                $user->detachRole(RoleSlug::DRIVER);
+            }
+
+            $user->update([
+                'is_deleted_at' => now(),
+                'mobile' => 'd'.$user->id,
+                'email' => 'deleted+'.$user->id.'@released.local',
+            ]);
+        }
+    }
+}
+
+if (!function_exists('orphan_driver_users')) {
+    function orphan_driver_users($search = null)
+    {
+        $query = User::query()
+            ->whereNull('is_deleted_at')
+            ->belongsToRole(RoleSlug::DRIVER)
+            ->whereDoesntHave('driver', function ($driverQuery) {
+                $driverQuery->withTrashed();
+            })
+            ->orderBy('created_at', 'desc');
+
+        $search = trim((string) $search);
+        if ($search !== '') {
+            $mobiles = mobile_lookup_variants($search);
+            $query->where(function ($inner) use ($search, $mobiles) {
+                $inner->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('mobile', 'like', '%'.$search.'%')
+                    ->orWhereIn('mobile', $mobiles);
+            });
+        }
+
+        return $query->get();
+    }
 }
 
 if (!function_exists('driver_exists_for_user')) {

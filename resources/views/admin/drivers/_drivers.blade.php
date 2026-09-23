@@ -57,7 +57,8 @@
 </tr>
 </thead>
 <tbody>
- @if(count($results)<1)
+@php $orphanUsers = $orphanUsers ?? collect(); @endphp
+ @if(count($results)<1 && $orphanUsers->count()<1)
     <tr>
         <td colspan="11">
         <p id="no_data" class="lead no-data text-center">
@@ -66,6 +67,38 @@
  </p>
     </tr>
     @else
+
+@foreach($orphanUsers as $orphan)
+<tr style="background:#fff8e8;">
+<td>—</td>
+<td>
+    {{ $orphan->name }}
+    <br><small class="text-warning">No driver profile</small>
+</td>
+<td>--</td>
+@if(env('APP_FOR')=='demo')
+    <td>**********</td>
+    <td>**********</td>
+@else
+    <td>{{ $orphan->email }}</td>
+    <td>{{ $orphan->mobile }}</td>
+@endif
+@if($app_for == "super" || $app_for == "bidding")
+    <td>--</td>
+@endif
+<td>--</td>
+<td><button class="btn btn-warning btn-sm" type="button">No profile</button></td>
+<td>--</td>
+<td>--</td>
+<td>
+@if(auth()->user()->can('delete-drivers'))
+<button type="button" class="btn btn-danger btn-sm sweet-delete" data-url="{{ url('drivers/delete-orphan-user', $orphan->id) }}">
+    @lang('view_pages.delete')
+</button>
+@endif
+</td>
+</tr>
+@endforeach
 
 @php  $i= $results->firstItem(); @endphp
 

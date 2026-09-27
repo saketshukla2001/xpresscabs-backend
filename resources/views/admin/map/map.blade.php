@@ -44,8 +44,13 @@ $value=web_map_settings();
         <div class="col-12">
             <div class="box">
 
-                <div class="box-header with-border">
+                <div class="box-header with-border" style="display:flex;align-items:center;justify-content:space-between;">
                     <h3>{{ $page }}</h3>
+                    <div>
+                        <span style="display:inline-block;background:#28a745;color:#fff;border-radius:4px;padding:6px 12px;margin-right:8px;font-size:14px;">Available: <strong id="god-eye-available">0</strong></span>
+                        <span style="display:inline-block;background:#fd7e14;color:#fff;border-radius:4px;padding:6px 12px;margin-right:8px;font-size:14px;">On Ride: <strong id="god-eye-onride">0</strong></span>
+                        <span style="display:inline-block;background:#6c757d;color:#fff;border-radius:4px;padding:6px 12px;font-size:14px;">Offline: <strong id="god-eye-offline">0</strong></span>
+                    </div>
                 </div>
                 {{-- <div class="col-sm-12">
 
@@ -134,12 +139,6 @@ var firebaseConfig = {
 
     var tripRef = firebase.database().ref('drivers');
 
-    tripRef.on('value', async function(snapshot) {
-        var data = snapshot.val();
-
-        await loadDriverIcons(data);
-    });
-
     var map = new google.maps.Map(document.getElementById('map'), {
             center: new google.maps.LatLng(default_lat, default_lng),
             zoom: 5,
@@ -214,96 +213,133 @@ var firebaseConfig = {
 
         map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
 
+    var markerById = {};
+
+    function driverPopup(val) {
+        return `<div class="p-2">
+                    <h6><i class="fa fa-id-badge"></i> : ${val.name ?? '-' } </h6>
+                    <h6><i class="fa fa-phone-square"></i> : ${val.mobile ?? '-'} </h6>
+                    <h6><i class="fa fa-id-card"></i> : ${val.vehicle_number ?? '-'} </h6>
+                    <h6><i class="fa fa-truck"></i> : ${val.vehicle_type_name ?? '-'} </h6>
+                </div>`;
+    }
+
+    var markerStateById = {};
+
+    function driverState(val) {
+        var conditional_timestamp = new Date(Date.now() - 15 * 60000);
+        if (!val || conditional_timestamp > val.updated_at) {
+            return 'offline';
+        }
+        if (val.is_available == true && val.is_active == true) {
+            return 'available';
+        }
+        if (val.is_active == true && val.is_available == false) {
+            return 'ontrip';
+        }
+        return 'offline';
+    }
+
+    function refreshDriverCounts() {
+        var available = 0;
+        var onride = 0;
+        var offline = 0;
+        Object.keys(markerStateById).forEach(function (key) {
+            if (markerStateById[key] === 'available') {
+                available++;
+            } else if (markerStateById[key] === 'ontrip') {
+                onride++;
+            } else {
+                offline++;
+            }
+        });
+        var availableEl = document.getElementById('god-eye-available');
+        var onrideEl = document.getElementById('god-eye-onride');
+        var offlineEl = document.getElementById('god-eye-offline');
+        if (availableEl) availableEl.textContent = available;
+        if (onrideEl) onrideEl.textContent = onride;
+        if (offlineEl) offlineEl.textContent = offline;
+    }
+
+    function driverIconUrl(val) {
+        var iconImg = '';
+        var state = driverState(val);
+        var typeKey = 'car';
+        if (val.vehicle_type_icon == 'motor_bike') {
+            typeKey = 'bike';
+        } else if (val.vehicle_type_icon == 'truck') {
+            typeKey = 'truck';
+        }
+        iconImg = icons[typeKey + '_' + state].icon;
+        return iconImg;
+    }
+
+    function removeDriverMarker(key) {
+        var existing = markerById[key];
+        if (!existing) {
+            return;
+        }
+        existing.setMap(null);
+        delete markerById[key];
+        delete markerStateById[key];
+        marker = marker.filter(function (item) { return item !== existing; });
+        refreshDriverCounts();
+    }
+
+    function upsertDriverMarker(key, val) {
+        if (!val || typeof val !== 'object' || typeof val.l === 'undefined' || val.l[0] == null || val.l[1] == null) {
+            removeDriverMarker(key);
+            return;
+        }
+        markerStateById[key] = driverState(val);
+        var iconImg = driverIconUrl(val);
+        var position = new google.maps.LatLng(val.l[0], val.l[1]);
+        var existing = markerById[key];
+        if (existing) {
+            existing.setPosition(position);
+            existing.setIcon(iconImg);
+            if (existing._info) {
+                existing._info.setContent(driverPopup(val));
+            }
+            refreshDriverCounts();
+            return;
+        }
+        var infowindow = new google.maps.InfoWindow({
+            content: driverPopup(val)
+        });
+        var carIcon = new google.maps.Marker({
+            position: position,
+            icon: iconImg,
+            map: map
+        });
+        carIcon._info = infowindow;
+        carIcon.addListener('click', function() {
+            infowindow.open(map, carIcon);
+        });
+        markerById[key] = carIcon;
+        marker.push(carIcon);
+        refreshDriverCounts();
+    }
+
+    tripRef.on('child_added', function (snapshot) {
+        upsertDriverMarker(snapshot.key, snapshot.val());
+    });
+    tripRef.on('child_changed', function (snapshot) {
+        upsertDriverMarker(snapshot.key, snapshot.val());
+    });
+    tripRef.on('child_removed', function (snapshot) {
+        removeDriverMarker(snapshot.key);
+    });
+
     function loadDriverIcons(data){
         deleteAllMarkers();
 
+        if (!data || typeof data !== 'object') {
+            return;
+        }
+
         Object.entries(data).forEach(([key, val]) => {
-            if( typeof val.l !=  'undefined'  ) {
-            var contentString = `<div class="p-2">
-                                    <h6><i class="fa fa-id-badge"></i> : ${val.name ?? '-' } </h6>
-                                    <h6><i class="fa fa-phone-square"></i> : ${val.mobile ?? '-'} </h6>
-                                    <h6><i class="fa fa-id-card"></i> : ${val.vehicle_number ?? '-'} </h6>
-                                    <h6><i class="fa fa-truck"></i> : ${val.vehicle_type_name ?? '-'} </h6>
-                                </div>`;
-
-            var infowindow = new google.maps.InfoWindow({
-                content: contentString
-            });
-
-            var iconImg = '';
-
-            var date = new Date();
-            var timestamp = date.getTime();
-            var conditional_timestamp = new Date(timestamp - 5 * 60000);
-            //    console.log(conditional_timestamp,val.updated_at,conditional_timestamp < val.updated_at);
-            if(conditional_timestamp > val.updated_at){
-                if(val.vehicle_type_icon=='taxi'){
-                    iconImg = icons['car_offline'].icon;
-                }else if(val.vehicle_type_icon=='motor_bike'){
-                    iconImg = icons['bike_offline'].icon;
-                }else if(val.vehicle_type_icon=='truck'){
-                    iconImg = icons['truck_offline'].icon;
-                }else{
-                    iconImg = icons['car_offline'].icon;
-
-                }
-            }else{
-                if(val.is_available == true && val.is_active==true){
-                    if(val.vehicle_type_icon=='taxi'){
-                    iconImg = icons['car_available'].icon;
-                    }else if(val.vehicle_type_icon=='motor_bike'){
-                    iconImg = icons['bike_available'].icon;
-                    }else if(val.vehicle_type_icon=='truck'){
-                    iconImg = icons['truck_available'].icon;
-                    }else{
-                    iconImg = icons['car_available'].icon;
-
-                    }
-                }else if(val.is_active==true && val.is_available==false){
-                    if(val.vehicle_type_icon=='taxi'){
-                    iconImg = icons['car_ontrip'].icon;
-                    }else if(val.vehicle_type_icon=='motor_bike'){
-                    iconImg = icons['bike_ontrip'].icon;
-                    }else if(val.vehicle_type_icon=='truck'){
-                    iconImg = icons['truck_ontrip'].icon;
-                    }else{
-                    iconImg = icons['car_ontrip'].icon;
-                    }
-                }else{
-
-                    if(val.vehicle_type_icon=='taxi'){
-                    iconImg = icons['car_offline'].icon;
-                    }else if(val.vehicle_type_icon=='motor_bike'){
-                    iconImg = icons['bike_offline'].icon;
-                    }else if(val.vehicle_type_icon=='truck'){
-                    iconImg = icons['truck_offline'].icon;
-                    }else{
-                    iconImg = icons['car_offline'].icon;
-
-                    }
-                }
-            }
-            // if(val.company_key==company_key){
-
-
-            var carIcon = new google.maps.Marker({
-                position: new google.maps.LatLng(val.l[0],val.l[1]),
-                icon: iconImg,
-                map: map
-            });
-
-            carIcon.addListener('click', function() {
-                infowindow.open(map, carIcon);
-            });
-
-            marker.push(carIcon);
-            carIcon.setMap(map);
-            // }
-
-            // marker.addListener('click', function() {
-            //     infowindow.open(map, marker);
-            // });
-            }
+            upsertDriverMarker(key, val);
         });
     }
 
@@ -312,11 +348,18 @@ var firebaseConfig = {
         for(var i=0;i<marker.length;i++){
             marker[i].setMap(null);
         }
+        marker = [];
+        markerById = {};
+        markerStateById = {};
+        refreshDriverCounts();
     }
 
 
 
     function initAutocomplete() {
+    if (!document.getElementById('search-box') || !(window.google && google.maps && google.maps.places)) {
+        return;
+    }
     var autocomplete = new google.maps.places.Autocomplete(
         document.getElementById('search-box'),
         { types: ['geocode'] }
@@ -412,8 +455,13 @@ window.onload = function () {
         <div class="col-12">
             <div class="box">
 
-                <div class="box-header with-border">
+                <div class="box-header with-border" style="display:flex;align-items:center;justify-content:space-between;">
                     <h3>{{ $page }}</h3>
+                    <div>
+                        <span style="display:inline-block;background:#28a745;color:#fff;border-radius:4px;padding:6px 12px;margin-right:8px;font-size:14px;">Available: <strong id="god-eye-available">0</strong></span>
+                        <span style="display:inline-block;background:#fd7e14;color:#fff;border-radius:4px;padding:6px 12px;margin-right:8px;font-size:14px;">On Ride: <strong id="god-eye-onride">0</strong></span>
+                        <span style="display:inline-block;background:#6c757d;color:#fff;border-radius:4px;padding:6px 12px;font-size:14px;">Offline: <strong id="god-eye-offline">0</strong></span>
+                    </div>
                 </div>
 
                 <div id="map"></div>
@@ -510,42 +558,71 @@ legend.addTo(map);
 
     var markers = [];
 
+    function driverState(driver) {
+        var conditionalTimestamp = new Date(Date.now() - 15 * 60000);
+        if (!driver || conditionalTimestamp > driver.updated_at) {
+            return 'offline';
+        }
+        if (driver.is_available == true && driver.is_active == true) {
+            return 'available';
+        }
+        if (driver.is_active == true && driver.is_available == false) {
+            return 'ontrip';
+        }
+        return 'offline';
+    }
+
+    function refreshDriverCounts(counts) {
+        var availableEl = document.getElementById('god-eye-available');
+        var onrideEl = document.getElementById('god-eye-onride');
+        var offlineEl = document.getElementById('god-eye-offline');
+        if (availableEl) availableEl.textContent = counts.available;
+        if (onrideEl) onrideEl.textContent = counts.onride;
+        if (offlineEl) offlineEl.textContent = counts.offline;
+    }
+
     function loadDriverIcons(data) {
         markers.forEach(marker => {
             map.removeLayer(marker);
         });
 
         markers = [];
+        var counts = { available: 0, onride: 0, offline: 0 };
 
-        Object.values(data).forEach(val => {
-            if (typeof val.l !== 'undefined') {
-                var iconImg = getDriverIcon(val);
+        if (data && typeof data === 'object') {
+            Object.values(data).forEach(val => {
+                if (!val || typeof val.l === 'undefined' || val.l[0] == null || val.l[1] == null) {
+                    return;
+                }
+                var state = driverState(val);
+                if (state === 'available') {
+                    counts.available++;
+                } else if (state === 'ontrip') {
+                    counts.onride++;
+                } else {
+                    counts.offline++;
+                }
 
-                var marker = L.marker([val.l[0], val.l[1]], { icon: iconImg })
+                var marker = L.marker([val.l[0], val.l[1]], { icon: getDriverIcon(val) })
                     .bindPopup(getPopupContent(val))
                     .addTo(map);
 
                 markers.push(marker);
-            }
-        });
+            });
+        }
+
+        refreshDriverCounts(counts);
     }
 
     function getDriverIcon(driver) {
-        var date = new Date();
-        var timestamp = date.getTime();
-        var conditionalTimestamp = new Date(timestamp - 5 * 60000);
-
-        if (conditionalTimestamp > driver.updated_at) {
-            return L.icon({ iconUrl: icons['car_offline'] });
-        } else {
-            if (driver.is_available == true && driver.is_active == true) {
-                return L.icon({ iconUrl: icons['car_available'] });
-            } else if (driver.is_active == true && driver.is_available == false) {
-                return L.icon({ iconUrl: icons['car_ontrip'] });
-            } else {
-                return L.icon({ iconUrl: icons['car_offline'] });
-            }
+        var state = driverState(driver);
+        var typeKey = 'car';
+        if (driver.vehicle_type_icon == 'motor_bike') {
+            typeKey = 'bike';
+        } else if (driver.vehicle_type_icon == 'truck') {
+            typeKey = 'truck';
         }
+        return L.icon({ iconUrl: icons[typeKey + '_' + state] });
     }
 
     function getPopupContent(driver) {

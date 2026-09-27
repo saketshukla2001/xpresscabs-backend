@@ -75,6 +75,8 @@ return array (
   'custom_make' => 'Custom Make',
   'custom_model' => 'Custom Model',
   'driver_name' => 'Driver Name',
+  'drivers_sent' => 'Drivers Sent',
+  'drivers_rang' => 'App Rang',
   'cancelled_by' => 'Cancelled By',
   'cancellation_reason' => 'Cancellation Reason',
   'cancellation_fee' => 'Cancellation Fee',

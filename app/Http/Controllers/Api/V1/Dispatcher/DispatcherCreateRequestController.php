@@ -307,7 +307,7 @@ class DispatcherCreateRequestController extends BaseController
         $lower_hash = $g->encode($lower_lat,$lower_long, 12);
         $higher_hash = $g->encode($higher_lat,$higher_long, 12);
 
-        $conditional_timestamp = Carbon::now()->subMinutes(7)->timestamp;
+        $conditional_timestamp = Carbon::now()->subMinutes(30)->timestamp;
 
         $vehicle_type = $type_id;
 

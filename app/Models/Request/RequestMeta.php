@@ -10,6 +10,23 @@ use Illuminate\Database\Eloquent\Model;
 class RequestMeta extends Model
 {
     use HasActive;
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(function (RequestMeta $meta) {
+            if (!$meta->request_id) {
+                return;
+            }
+
+            Request::where('id', $meta->request_id)->increment('drivers_sent_count');
+
+            if ($meta->active) {
+                Request::where('id', $meta->request_id)->increment('drivers_rang_count');
+            }
+        });
+    }
     /**
      * The table associated with the model.
      *

@@ -234,7 +234,7 @@ var firebaseConfig = {
 
             var date = new Date();
             var timestamp = date.getTime();
-            var conditional_timestamp = new Date(timestamp - 5 * 60000);
+            var conditional_timestamp = new Date(timestamp - 15 * 60000);
             //    console.log(conditional_timestamp,val.updated_at,conditional_timestamp < val.updated_at);
             if(conditional_timestamp > val.updated_at){
                 if(val.vehicle_type_icon=='taxi'){
@@ -533,7 +533,7 @@ legend.addTo(map);
     function getDriverIcon(driver) {
         var date = new Date();
         var timestamp = date.getTime();
-        var conditionalTimestamp = new Date(timestamp - 5 * 60000);
+        var conditionalTimestamp = new Date(timestamp - 15 * 60000);
 
         if (conditionalTimestamp > driver.updated_at) {
             return L.icon({ iconUrl: icons['car_offline'] });

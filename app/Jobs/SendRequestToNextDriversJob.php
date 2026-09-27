@@ -70,6 +70,8 @@ class SendRequestToNextDriversJob implements ShouldQueue
                 $notifiable_driver = $request_meta_detail->driver->user;
 
                 dispatch(new SendPushNotification($notifiable_driver,$title,$body));
+
+                \App\Models\Request\Request::where('id', $request_meta_detail->request_id)->increment('drivers_rang_count');
             }
         }
     }

@@ -6,6 +6,8 @@
             <th> @lang('view_pages.date')</th>
             <th> @lang('view_pages.user_name')</th>
             <th> @lang('view_pages.driver_name')</th>
+            <th> @lang('view_pages.drivers_sent')</th>
+            <th> @lang('view_pages.drivers_rang')</th>
             <th> @lang('view_pages.transport_type')</th>
             <th> @lang('view_pages.trip_status')</th>
             <th> @lang('view_pages.is_paid')</th>
@@ -27,6 +29,8 @@
             <td>{{ $result->converted_trip_start_time }}</td>
             <td>{{$result->userDetail ? $result->userDetail->name : '-'}}</td>
             <td>{{$result->driverDetail ? $result->driverDetail->name : '-'}}</td>
+            <td>{{ (int) $result->drivers_sent_count }}</td>
+            <td>{{ (int) $result->drivers_rang_count }}</td>
             <td>{{$result->transport_type}}</td>
 
             @if($result->is_cancelled == 1)
@@ -98,7 +102,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="11">
+            <td colspan="13">
                 <p id="no_data" class="lead no-data text-center">
                     <img src="{{asset('assets/img/dark-data.svg')}}" style="width:150px;margin-top:25px;margin-bottom:25px;" alt="">
                     <h4 class="text-center" style="color:#333;font-size:25px;">@lang('view_pages.no_data_found')</h4>

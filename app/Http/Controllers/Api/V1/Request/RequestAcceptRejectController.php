@@ -171,22 +171,23 @@ class RequestAcceptRejectController extends BaseController
         // @TODO send sms,email & push notification with request detail
         } else {
 
-            $this->database->getReference('request-meta/'.$request_detail->id)->set(['driver_id'=>$driver->id,'request_id'=>$request_detail->id,'user_id'=>$request_detail->user_id,'active'=>1,'is_accepted'=>0,'profile_picture'=>auth()->user()->profile_picture,'name'=>auth()->user()->name,'rating'=>auth()->user()->rating,'updated_at'=> Database::SERVER_TIMESTAMP]); 
-
-            // Log::info('request-number');
-            // Log::info($request_detail->request_number);
-            // Log::info('----------');
             $request_result =  fractal($request_detail, new TripRequestTransformer)->parseIncludes('userDetail');
-            // Save Driver Reject Requests
-            DriverRejectedRequest::create(['request_id'=>$request_detail->id,
-                'driver_id'=>$driver->id]);
+            DriverRejectedRequest::firstOrCreate([
+                'request_id' => $request_detail->id,
+                'driver_id' => $driver->id,
+            ]);
 
             $push_request_detail = $request_result->toJson();
-            // Delete Driver record from meta table
             RequestMeta::where('request_id', $request->input('request_id'))->where('driver_id', $driver->id)->delete();
 
-                 // Send Ride to the Nearest Next Driver
-                $this->fetchDriversFromFirebase($request_detail);
+            $offer = $this->database->getReference('request-meta/'.$request_detail->id)->getValue();
+            $offeredDriverId = is_array($offer) ? ($offer['driver_id'] ?? null) : null;
+            if ((string) $offeredDriverId === (string) $driver->id) {
+                $this->database->getReference('request-meta/'.$request_detail->id)->remove();
+            }
+
+            // Offer the ride to the next driver who has not already rejected it.
+            $this->fetchDriversFromFirebase($request_detail);
 
                 goto end;
 

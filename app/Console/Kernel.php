@@ -44,12 +44,19 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+         // File cache keeps the overlap lock across processes. The default
+         // cache driver for this app is array, which does not.
+         $schedule->useCache('file');
+
          $schedule->command('drivers:totrip')
-                 ->everyMinute();
+                 ->everyMinute()
+                 ->withoutOverlapping();
          $schedule->command('assign_drivers:for_regular_rides')
-                 ->everyMinute();
+                 ->everyMinute()
+                 ->withoutOverlapping();
          $schedule->command('assign_drivers:for_schedule_rides')
-                 ->everyFiveMinutes();
+                 ->everyFiveMinutes()
+                 ->withoutOverlapping();
         // Drivers must stay on duty; do not auto-offline them.
         // $schedule->command('offline:drivers')
         //          ->everyFiveMinutes();
@@ -60,7 +67,12 @@ class Kernel extends ConsoleKernel
         // $schedule->command('clear:database')
         //          ->daily();
          $schedule->command('cancel:request')
-                 ->everyMinute();                 
+                 ->everyMinute()
+                 ->withoutOverlapping();
+         $schedule->command('queue:work database --stop-when-empty --max-time=50 --tries=3')
+                 ->everyMinute()
+                 ->withoutOverlapping()
+                 ->runInBackground();
     }
 
     /**

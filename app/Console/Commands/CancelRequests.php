@@ -70,6 +70,7 @@ class CancelRequests extends Command
                 'cancel_method'=>UserType::AUTOMATIC,
                 'cancelled_at'=>Carbon::now()->toDateString(),
             ]);
+         $request->requestMeta()->delete();
 
          $this->database->getReference('requests/'.$request->id)->update(['no_driver'=>1,'updated_at'=> Database::SERVER_TIMESTAMP]);
 
@@ -79,7 +80,7 @@ class CancelRequests extends Command
           $this->database->getReference('bid-meta/'.$request->id)->remove();
 
 
-          dispatch(new NoDriverFoundNotifyJob($request->id,$this->database));
+          dispatch(new NoDriverFoundNotifyJob([$request->id],$this->database));
        
 
 

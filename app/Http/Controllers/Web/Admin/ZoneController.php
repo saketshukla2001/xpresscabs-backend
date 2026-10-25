@@ -879,6 +879,15 @@ class ZoneController extends BaseController
     public function dayWiseStore(HttpRequest $request, Zone $zone)
     {
     //Surge Price Range
+        $normalizedSurge = [];
+        foreach ($request->from_time as $key => $from_value) {
+            $raw = str_replace(',', '.', trim((string) ($request->distance_surge[$key] ?? '')));
+            if ($raw === '' || !is_numeric($raw) || (float) $raw < 0) {
+                return redirect()->back()->withInput()->with('failure', 'Enter surge percent as a number, for example 13, 15, 45 or 13.15');
+            }
+            $normalizedSurge[$key] = round((float) $raw, 2);
+        }
+
         $zone->zoneSurge()->where('day', $request->day[0])->delete();
             foreach ($request->from_time as $key => $from_value) 
             {
@@ -888,7 +897,7 @@ class ZoneController extends BaseController
                 $created_params['end_time'] = $request->to_time[$key];
                 $created_params['day'] = $request->day[0];
                
-                $created_params['value'] = $request->distance_surge[$key];
+                $created_params['value'] = $normalizedSurge[$key];
                 $zone->zoneSurge()->create($created_params);
 
            }

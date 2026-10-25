@@ -46,33 +46,48 @@ class NoDriverFoundNotifyJob implements ShouldQueue
 
         foreach ($this->requestids as $key => $request_id) {
             $request_detail = Request::find($request_id);
-            $request_detail->update(['is_cancelled'=>true,'cancel_method'=>0,'cancelled_at'=>date('Y-m-d H:i:s')]);
-            
-        if($app_for == 'bidding')
-        {
-            $this->database->getReference('bid-meta/'.$request_detail->id)->remove();
-        }
+            if (!$request_detail) {
+                continue;
+            }
+
+            $accepted = !$request_detail->is_cancelled
+                && !$request_detail->is_completed
+                && ($request_detail->is_driver_started || $request_detail->accepted_at || $request_detail->driver_id);
+
+            if ($accepted || $request_detail->is_completed) {
+                $request_detail->requestMeta()->delete();
+                $this->database->getReference('request-meta/'.$request_detail->id)->remove();
+                continue;
+            }
+
+            if (!$request_detail->is_cancelled) {
+                $request_detail->update(['is_cancelled'=>true,'cancel_method'=>0,'cancelled_at'=>date('Y-m-d H:i:s')]);
+            }
+
+            $request_detail->requestMeta()->delete();
+            $this->database->getReference('request-meta/'.$request_detail->id)->remove();
+
+            if ($app_for == 'bidding') {
+                $this->database->getReference('bid-meta/'.$request_detail->id)->remove();
+            }
+
+            $user = $request_detail->userDetail;
+            if (!$user) {
+                continue;
+            }
+
             $request_detail->fresh();
             $request_result =  fractal($request_detail, new CronTripRequestTransformer);
-            $pus_request_detail = $request_result->toJson();
-    
-            $title = trans('push_notifications.no_driver_found_title',[],$request_detail->userDetail->lang);
-            $body = trans('push_notifications.no_driver_found_body',[],$request_detail->userDetail->lang);
 
+            $title = trans('push_notifications.no_driver_found_title',[],$user->lang);
+            $body = trans('push_notifications.no_driver_found_body',[],$user->lang);
 
-            $push_data = ['notification_enum'=>PushEnums::NO_DRIVER_FOUND];
-
-            if ($request_detail->userDetail()->exists()) {
-
-                if($request_result->userDetail->fcm_token){
-                $user = $request_detail->userDetail;
+            if ($user->fcm_token) {
                 $socket_data = new \stdClass();
                 $socket_data->success = true;
                 $socket_data->success_message  = PushEnums::NO_DRIVER_FOUND;
                 $socket_data->result = $request_result;
                 dispatch(new SendPushNotification($user,$title,$body));
-                }
-
             }
         }
     }

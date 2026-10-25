@@ -107,7 +107,7 @@
                                 </td> 
                                 <td>
                                     <div class="form-group">
-                                            <input class="form-control" type="number" id="name" name="distance_surge[]" value="{{old('distance_surge.'.$k,$price_day->value)}}" required="" placeholder="@lang('view_pages.enter_price')">
+                                            <input class="form-control distance_surge" type="text" inputmode="decimal" name="distance_surge[]" value="{{ old('distance_surge.'.$k, $price_day->value) }}" required="" placeholder="@lang('view_pages.enter_price')">
                                             <span class="text-danger">{{ $errors->first('distance_surge.0') }}</span>
                                     </div>
                                 </td>                                
@@ -168,7 +168,7 @@
                                 </td>                                                              
                                 <td>
                                     <div class="form-group">
-                                            <input class="form-control" id="distance_surge" type="number" id="name" name="distance_surge[]" value="{{old('distance_surge.0')}}" required="" placeholder="@lang('view_pages.enter_price')">
+                                            <input class="form-control distance_surge" type="text" inputmode="decimal" name="distance_surge[]" value="{{ old('distance_surge.0') }}" required="" placeholder="@lang('view_pages.enter_price')">
                                             <span class="text-danger">{{ $errors->first('distance_surge.0') }}</span>
                                     </div>
                                 </td>                                
@@ -282,7 +282,7 @@ $(document).on("click", ".add_row", function () {
                     </td>';                                
     append_row += '<td>\
                         <div class="form-group">\
-                            <input class="form-control" type="number"  id="name" name="distance_surge[]" value="" required="" placeholder="@lang('view_pages.enter_price')">\
+                            <input class="form-control distance_surge" type="text" inputmode="decimal" name="distance_surge[]" value="" required="" placeholder="@lang('view_pages.enter_price')">\
                         </div>\
                     </td>';                                
     append_row +='<td>\
@@ -299,6 +299,13 @@ $(document).on("click", ".add_row", function () {
 
 $(document).on("click", ".remove_row", function () {
     $(this).closest("tr").remove();
+});
+
+$(document).on("input", ".distance_surge", function () {
+    var value = $(this).val().replace(/,/g, '.');
+    if (value !== $(this).val()) {
+        $(this).val(value);
+    }
 });
 </script>
 @endsection

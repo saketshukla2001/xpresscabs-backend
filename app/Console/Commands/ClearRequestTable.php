@@ -73,6 +73,7 @@ class ClearRequestTable extends Command
                 'cancel_method'=>0,
                 'cancelled_at'=>Carbon::now()->toDateString(),
             ]);
+         $out_request->requestMeta()->delete();
 
          $this->database->getReference('requests/'.$out_request->id)->update(['no_driver'=>1,'updated_at'=> Database::SERVER_TIMESTAMP]);
 

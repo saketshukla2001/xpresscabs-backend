@@ -102,13 +102,15 @@ class OnlineOfflineController extends BaseController
                 $online_created_params['duration'] = 0;
                 $availability =  $driver->driverAvailabilities()->create($online_created_params);
             }
-            // Store offllne record
-            $created_params['is_online'] = false;
-            $created_params['offline_at'] = $current_date->toDateTimeString();
-            $last_online_online_at = Carbon::parse($availability->online_at);
-            $duration = $current_date->diffInMinutes($last_online_online_at);
-            $created_params['duration'] = $availability->duration+$duration;
-            $availability->update($created_params);
+            // Store offline record only when an open online session exists
+            if ($availability) {
+                $created_params['is_online'] = false;
+                $created_params['offline_at'] = $current_date->toDateTimeString();
+                $last_online_online_at = Carbon::parse($availability->online_at);
+                $duration = $current_date->diffInMinutes($last_online_online_at);
+                $created_params['duration'] = ($availability->duration ?? 0) + $duration;
+                $availability->update($created_params);
+            }
         }
 
         $success_message = $status?'online-success':'offline-success';

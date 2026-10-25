@@ -108,6 +108,11 @@ class Request extends Model
         return $this->hasMany(RequestMeta::class, 'request_id', 'id');
     }
 
+    public function driverRings()
+    {
+        return $this->hasMany(RequestDriverRing::class, 'request_id', 'id');
+    }
+
     public function rentalPackage()
     {
         return $this->belongsTo(PackageType::class, 'rental_package_id', 'id');

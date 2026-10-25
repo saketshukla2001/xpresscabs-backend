@@ -8,6 +8,7 @@ use App\Base\Libraries\QueryFilter\QueryFilterContract;
 use App\Http\Controllers\Controller;
 use App\Models\Cms\FrontPage;
 use App\Models\Request\Request as RequestRequest;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
@@ -54,6 +55,33 @@ class RequestController extends Controller
         $results = $queryFilter->builder($query)->customFilter(new RequestFilter)->defaultSort('-created_at')->paginate();
 
         return view('admin.request._request', compact('results'));
+    }
+
+    public function rangDrivers(RequestRequest $request)
+    {
+        $timezone = auth()->user()->timezone ?: config('app.timezone');
+
+        $drivers = $request->driverRings()
+            ->with('driver')
+            ->orderBy('created_at')
+            ->get()
+            ->map(function ($ring) use ($timezone) {
+                $driver = $ring->driver;
+
+                return [
+                    'name' => optional($driver)->name ?: '-',
+                    'mobile' => optional($driver)->mobile ?: '-',
+                    'car_number' => optional($driver)->car_number ?: '-',
+                    'rang_at' => $ring->created_at
+                        ? Carbon::parse($ring->created_at)->setTimezone($timezone)->format('jS M h:i A')
+                        : '-',
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'drivers' => $drivers,
+        ]);
     }
 
     public function getAllDeliveryRequest(QueryFilterContract $queryFilter)

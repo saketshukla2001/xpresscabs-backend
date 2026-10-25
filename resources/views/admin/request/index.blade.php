@@ -143,6 +143,39 @@
                     </div>
 
 
+                    <div class="modal fade" id="rang-drivers-modal" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal-dialog modal-lg" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h4 class="modal-title">@lang('view_pages.rang_drivers')</h4>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>@lang('view_pages.s_no')</th>
+                                                    <th>@lang('view_pages.driver_name')</th>
+                                                    <th>@lang('view_pages.mobile')</th>
+                                                    <th>@lang('view_pages.car_number')</th>
+                                                    <th>@lang('view_pages.rang_at')</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="rang-drivers-body">
+                                                <tr>
+                                                    <td colspan="5" class="text-center">@lang('view_pages.loading')</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="js-request-partial-target" class="table-responsive">
                         <include-fragment src="requests/fetch">
                             <span style="text-align: center;font-weight: bold;">@lang('view_pages.loading')</span>
@@ -164,6 +197,39 @@
             var search_keyword = '';
 
             $(function() {
+                function escapeHtml(value) {
+                    return $('<div>').text(value == null ? '' : value).html();
+                }
+
+                $('body').on('click', '.rang-drivers-link', function(e) {
+                    e.preventDefault();
+                    var url = $(this).data('url');
+                    $('#rang-drivers-body').html('<tr><td colspan="5" class="text-center">@lang('view_pages.loading')</td></tr>');
+                    $('#rang-drivers-modal').modal('show');
+
+                    $.get(url).done(function(data) {
+                        var drivers = (data && data.drivers) ? data.drivers : [];
+                        if (!drivers.length) {
+                            $('#rang-drivers-body').html('<tr><td colspan="5" class="text-center">@lang('view_pages.no_rang_drivers')</td></tr>');
+                            return;
+                        }
+
+                        var rows = '';
+                        $.each(drivers, function(index, driver) {
+                            rows += '<tr>'
+                                + '<td>' + (index + 1) + '</td>'
+                                + '<td>' + escapeHtml(driver.name) + '</td>'
+                                + '<td>' + escapeHtml(driver.mobile) + '</td>'
+                                + '<td>' + escapeHtml(driver.car_number) + '</td>'
+                                + '<td>' + escapeHtml(driver.rang_at) + '</td>'
+                                + '</tr>';
+                        });
+                        $('#rang-drivers-body').html(rows);
+                    }).fail(function() {
+                        $('#rang-drivers-body').html('<tr><td colspan="5" class="text-center">@lang('view_pages.no_rang_drivers')</td></tr>');
+                    });
+                });
+
                 $('body').on('click', '.pagination a', function(e) {
                     e.preventDefault();
                     var url = $(this).attr('href');

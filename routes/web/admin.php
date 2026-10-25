@@ -482,6 +482,7 @@ Route::middleware('auth:web')->group(function () {
         Route::group(['prefix' => 'requests',  'middleware' => 'permission:view-requests'], function () {
             Route::get('/', 'RequestController@index');
             Route::get('/fetch', 'RequestController@getAllRequest');
+            Route::get('/{request}/rang-drivers', 'RequestController@rangDrivers');
             Route::get('/{request}', 'RequestController@getSingleRequest');
             Route::get('trip_view/{request}','RequestController@requestDetailedView');
             Route::get('/request/{request}', 'RequestController@fetchSingleRequest');

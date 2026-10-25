@@ -80,6 +80,7 @@ class AssignDriversForRegularRides extends Command
            $update_parms['cancel_method'] = 0;
            
            $uncompleted_request->update($update_parms);
+           $uncompleted_request->requestMeta()->delete();
 
            if($uncompleted_request->driver_id){
             Driver::where('id',$uncompleted_request->driver_id)->update(['available'=>true]);

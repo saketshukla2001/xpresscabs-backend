@@ -24,6 +24,7 @@ class RequestMeta extends Model
 
             if ($meta->active) {
                 Request::where('id', $meta->request_id)->increment('drivers_rang_count');
+                RequestDriverRing::record($meta->request_id, $meta->driver_id);
             }
         });
     }
@@ -67,6 +68,22 @@ class RequestMeta extends Model
     public function driver()
     {
         return $this->belongsTo(Driver::class, 'driver_id', 'id');
+    }
+
+    /**
+     * Offer still waiting for this driver to accept or reject.
+     * Cancelled, completed, and already accepted trips are excluded.
+     */
+    public function scopeIncomingForDriver($query, $driverId)
+    {
+        return $query->where('driver_id', $driverId)
+            ->where('active', 1)
+            ->whereHas('request', function ($request) {
+                $request->where('is_cancelled', 0)
+                    ->where('is_completed', 0)
+                    ->where('is_driver_started', 0)
+                    ->whereNull('accepted_at');
+            });
     }
 
     /**

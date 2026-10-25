@@ -21,6 +21,10 @@ class ZoneSurgePrice extends Model
         'zone_id','start_time','end_time','value','day'
     ];
 
+    protected $casts = [
+        'value' => 'float',
+    ];
+
     public function getFromAttribute(){
         return now()->parse($this->start_time)->format('h:i a');
     }

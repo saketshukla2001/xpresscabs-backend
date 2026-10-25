@@ -173,7 +173,9 @@ class DriverCancelRequestController extends BaseController
             'custom_reason'=>$request->custom_reason,
             'cancel_method'=>UserType::DRIVER,
         ]);
-          $this->database->getReference('bid-meta/'.$request->id)->remove();
+          $request_detail->requestMeta()->delete();
+          $this->database->getReference('bid-meta/'.$request_detail->id)->remove();
+          $this->database->getReference('request-meta/'.$request_detail->id)->remove();
 
             goto no_drivers_available;
         }
@@ -209,6 +211,7 @@ class DriverCancelRequestController extends BaseController
         // 
 /*new*/
         // Delete from Firebase
+        $request_detail->requestMeta()->delete();
         $this->database->getReference('requests/' . $request_detail->id)->update(['is_cancelled' => true, 'cancelled_by_driver' => true]);    
         $this->database->getReference('request-meta/' . $request_detail->id)->remove();
 

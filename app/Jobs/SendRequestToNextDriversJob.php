@@ -42,9 +42,22 @@ class SendRequestToNextDriversJob implements ShouldQueue
     {
         foreach ($this->request_meta_ids as $key => $request_meta_id) {
             $request_meta_detail = RequestMeta::find($request_meta_id);
+            if (!$request_meta_detail || !$request_meta_detail->active || !$request_meta_detail->driver) {
+                continue;
+            }
 
-            // Add Meta Driver into Firebase Request Meta
-            $this->database->getReference('request-meta/'.$request_meta_detail->request_id.'/'.$request_meta_detail->driver_id)->set(['driver_id'=>$request_meta_detail->driver_id,'request_id'=>$request_meta_detail->request_id,'user_id'=>$request_meta_detail->user_id,'active'=>1,'updated_at'=> Database::SERVER_TIMESTAMP]);
+            $request = $request_meta_detail->request;
+            if (!$request || $request->is_cancelled || $request->is_completed || $request->is_driver_started || $request->accepted_at) {
+                continue;
+            }
+
+            $this->database->getReference('request-meta/'.$request_meta_detail->request_id)->set([
+                'driver_id' => $request_meta_detail->driver_id,
+                'request_id' => $request_meta_detail->request_id,
+                'user_id' => $request_meta_detail->user_id,
+                'active' => 1,
+                'updated_at' => Database::SERVER_TIMESTAMP,
+            ]);
 
             $request_result =  fractal($request_meta_detail->request, new CronTripRequestTransformer)->parseIncludes('userDetail');
 
@@ -71,6 +84,7 @@ class SendRequestToNextDriversJob implements ShouldQueue
 
                 dispatch(new SendPushNotification($notifiable_driver,$title,$body));
 
+                \App\Models\Request\RequestDriverRing::record($request_meta_detail->request_id, $request_meta_detail->driver_id);
                 \App\Models\Request\Request::where('id', $request_meta_detail->request_id)->increment('drivers_rang_count');
             }
         }

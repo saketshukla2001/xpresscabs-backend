@@ -30,7 +30,15 @@
             <td>{{$result->userDetail ? $result->userDetail->name : '-'}}</td>
             <td>{{$result->driverDetail ? $result->driverDetail->name : '-'}}</td>
             <td>{{ (int) $result->drivers_sent_count }}</td>
-            <td>{{ (int) $result->drivers_rang_count }}</td>
+            <td>
+                @if((int) $result->drivers_rang_count > 0)
+                    <a href="javascript:void(0)" class="rang-drivers-link" data-url="{{ url('requests/'.$result->id.'/rang-drivers') }}" style="font-weight:700;color:#1e88e5;">
+                        {{ (int) $result->drivers_rang_count }}
+                    </a>
+                @else
+                    0
+                @endif
+            </td>
             <td>{{$result->transport_type}}</td>
 
             @if($result->is_cancelled == 1)

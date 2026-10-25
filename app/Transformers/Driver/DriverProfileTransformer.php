@@ -426,7 +426,7 @@ Log::info('from driver - '.$user->id);
      */
     public function includeMetaRequest(Driver $user)
     {
-        $request_meta = RequestMeta::where('driver_id', $user->id)->where('active', true)->first();
+        $request_meta = RequestMeta::incomingForDriver($user->id)->first();
         if ($request_meta) {
             $request = $request_meta->request;
             return $request

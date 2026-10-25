@@ -202,7 +202,8 @@ trait FetchDriversFromFirebaseHelpers
                         
                         // Update cancel param in firebase
                         $this->database->getReference('requests/'.$request_detail->id)->update(['is_cancel' => 1]);
-                     
+
+                        $request_detail->requestMeta()->delete();
                         $this->database->getReference('request-meta/'.$request_detail->id)->remove();
                         $this->database->getReference('requests/'.$request_detail->id)->remove();
 
@@ -260,6 +261,7 @@ trait FetchDriversFromFirebaseHelpers
                 if ($request_detail->attempt_for_schedule>$no_of_attempts) {
 
                         $this->database->getReference('requests/'.$request_detail->id)->update(['is_cancel' => 1]);
+                        $request_detail->requestMeta()->delete();
                         $this->database->getReference('request-meta/'.$request_detail->id)->remove();
  
                         $no_driver_request_ids = [];
@@ -338,6 +340,7 @@ trait FetchDriversFromFirebaseHelpers
                 if ($request_detail->attempt_for_schedule>$no_of_attempts) {
 
                     $this->database->getReference('requests/'.$request_detail->id)->update(['is_cancel' => 1]);
+                    $request_detail->requestMeta()->delete();
                     $this->database->getReference('request-meta/'.$request_detail->id)->remove();
                     $this->database->getReference('requests/'.$request_detail->id)->remove();
 
